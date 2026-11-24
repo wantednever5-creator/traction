@@ -14,19 +14,12 @@ import {
   Lock,
   MessageCircle,
   Newspaper,
-  Share2,
   Skull,
-  Sparkles,
   Volume2,
   VolumeX,
-  Zap,
-  History,
-  Trash2,
 } from "lucide-react";
 import {
   BaitMode,
-  HEADLINE_PRESETS,
-  HeadlineCategory,
   LangMode,
   SpiceMode,
   buildBaitPath,
@@ -39,31 +32,18 @@ interface CreatorStudioProps {
   initialSender?: string;
 }
 
-interface SavedTrap {
-  id: string;
-  victim: string;
-  headline: string;
-  url: string;
-  mode: BaitMode;
-}
-
-const CHAT_BAIT_CAPTIONS: Record<"hi" | "en", string[]> = {
+const CHAT_CAPTIONS = {
   hi: [
-    "bhai yeh kya scene hai?? jaldi dekh delete hone se pehle 💀",
-    "arre bro yeh tere baare mein kyun ghoom raha hai group mein 👀",
-    "bhai 2nd paragraph padh iska, dimaag hil jayega 😭",
-    "kisi ne abhi forward kiya, jaldi khol le before it expires",
+    "bhai yeh kya scene hai?? jaldi dekh 💀",
+    "bro yeh tere baare mein kyun ghoom raha hai 👀",
+    "delete hone se pehle dekh le bhai",
   ],
   en: [
-    "bro wtf is this?? open before it gets taken down 💀",
-    "wait why is everyone sending this around rn 👀",
-    "nah read the second half of this 😭",
-    "someone just dropped this in the chat, thought you should see first",
+    "bro wtf is this?? open before it gets pulled 💀",
+    "why is everyone sending this around rn 👀",
+    "thought you should see this first",
   ],
 };
-
-const QUICK_NAMES = ["Rohan", "Priya", "Kabir", "Aarav", "Ananya", "Dev"];
-const HISTORY_KEY = "dispatch_recent_traps_v1";
 
 export default function CreatorStudio({
   initialChain = 1,
@@ -77,34 +57,22 @@ export default function CreatorStudio({
   const [spice, setSpice] = useState<SpiceMode>("chaotic");
 
   const [headlineDraft, setHeadlineDraft] = useState(
-    HEADLINE_PRESETS[0].template
+    "LEAKED: {name} ki ChatGPT history mein 30 baar 'how to reply to hmm' search mila"
   );
-  const [subheadDraft, setSubheadDraft] = useState(HEADLINE_PRESETS[0].subhead);
-  const [tagDraft, setTagDraft] = useState(HEADLINE_PRESETS[0].tag);
+  const [subheadDraft, setSubheadDraft] = useState(
+    "Screenshots niche attached hain, link uddne se pehle dekh le."
+  );
+  const [tagDraft, setTagDraft] = useState("LEAKED");
   const [seed, setSeed] = useState(4041);
   const [rollCount, setRollCount] = useState(0);
 
-  const [activeCategory, setActiveCategory] =
-    useState<HeadlineCategory>("hinglish");
-  const [captionIndex, setCaptionIndex] = useState(0);
-
   const [copied, setCopied] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [recentTraps, setRecentTraps] = useState<SavedTrap[]>([]);
 
-  // Hydrate origin, recent traps, and roll a guaranteed fresh headline on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin);
-      try {
-        const raw = localStorage.getItem(HISTORY_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) setRecentTraps(parsed);
-        }
-      } catch {}
     }
-
     const fresh = generateInfiniteBait({
       name: "{name}",
       mode: "news",
@@ -121,7 +89,7 @@ export default function CreatorStudio({
 
   const resolvedHeadline = useMemo(() => {
     const raw = headlineDraft.trim();
-    if (!raw) return `BREAKING: ${displayVictim} caught in 4K`;
+    if (!raw) return `LEAKED: ${displayVictim} caught in 4K`;
     if (raw.includes("{name}")) return raw.replaceAll("{name}", displayVictim);
     if (raw.toLowerCase().includes(displayVictim.toLowerCase())) return raw;
     return `${tagDraft || "BREAKING"}: ${displayVictim} — ${raw}`;
@@ -155,11 +123,12 @@ export default function CreatorStudio({
 
   const fullUrl = `${origin}${baitPath}`;
 
-  const activeCaptions =
-    lang === "en" ? CHAT_BAIT_CAPTIONS.en : CHAT_BAIT_CAPTIONS.hi;
-  const activeCaption = activeCaptions[captionIndex % activeCaptions.length];
+  const activeCaption = useMemo(() => {
+    const pool = lang === "en" ? CHAT_CAPTIONS.en : CHAT_CAPTIONS.hi;
+    return pool[seed % pool.length];
+  }, [lang, seed]);
 
-  const rollFreshHeadline = (
+  const rollFresh = (
     overrideMode?: BaitMode,
     overrideLang?: LangMode,
     overrideSpice?: SpiceMode
@@ -183,78 +152,27 @@ export default function CreatorStudio({
     setCopied(false);
   };
 
-  const saveTrapToHistory = () => {
-    const entry: SavedTrap = {
-      id: `${Date.now()}`,
-      victim: displayVictim,
-      headline: resolvedHeadline,
-      url: fullUrl,
-      mode,
-    };
-    setRecentTraps((prev) => {
-      const next = [entry, ...prev.filter((item) => item.url !== fullUrl)].slice(
-        0,
-        5
-      );
-      try {
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
-
-  const handleCopyLink = async (customUrl?: string) => {
-    const targetUrl = customUrl || fullUrl;
+  const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(targetUrl);
+      await navigator.clipboard.writeText(fullUrl);
       soundFX.playCopySuccess();
-      if (!customUrl) {
-        saveTrapToHistory();
-        setCopied(true);
-        confetti({
-          particleCount: 45,
-          spread: 65,
-          origin: { y: 0.72 },
-          colors: ["#FF2E2E", "#FFE600", "#0B0B0B", "#FFFFFF"],
-        });
-        setTimeout(() => setCopied(false), 2400);
-      }
+      setCopied(true);
+      confetti({
+        particleCount: 36,
+        spread: 60,
+        origin: { y: 0.72 },
+        colors: ["#FF2E2E", "#FFE600", "#0B0B0B", "#FFFFFF"],
+      });
+      setTimeout(() => setCopied(false), 2400);
     } catch {
-      window.prompt("Copy your bait link:", targetUrl);
+      window.prompt("Copy your bait link:", fullUrl);
     }
   };
 
-  const handleWhatsappDrop = () => {
+  const handleWhatsapp = () => {
     soundFX.playClick();
-    saveTrapToHistory();
     const message = `${activeCaption}\n${fullUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
-  };
-
-  const handleNativeShare = async () => {
-    soundFX.playClick();
-    saveTrapToHistory();
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: resolvedHeadline,
-          text: activeCaption,
-          url: fullUrl,
-        });
-        return;
-      } catch {
-        // Fall back to copy
-      }
-    }
-    handleCopyLink();
-  };
-
-  const handleClearHistory = () => {
-    soundFX.playClick();
-    setRecentTraps([]);
-    try {
-      localStorage.removeItem(HISTORY_KEY);
-    } catch {}
   };
 
   const toggleMute = () => {
@@ -263,55 +181,34 @@ export default function CreatorStudio({
     soundFX.muted = next;
   };
 
-  const filteredPresets = useMemo(
-    () => HEADLINE_PRESETS.filter((p) => p.category === activeCategory),
-    [activeCategory]
-  );
-
   const previewDark = mode === "leak" || spice === "dark";
   const previewGift = mode === "gift";
 
   return (
-    <div className="min-h-screen w-full halftone-bg text-[#0B0B0B] flex flex-col">
-      {/* Top Breaking Ticker Marquee */}
-      <div className="w-full bg-[#0B0B0B] text-[#FFE600] border-b-[3px] border-[#0B0B0B] overflow-hidden py-2">
-        <div className="animate-marquee font-mono text-xs font-bold tracking-widest uppercase">
-          {[0, 1].map((dup) => (
-            <div key={dup} className="flex items-center gap-8 pr-8">
-              <span>● CAUGHT IN 4K</span>
-              <span className="text-white">FAKE NEWS • MYSTERY BOX • LEAKED CCTV</span>
-              <span className="text-[#FF2E2E]">● HINGLISH + EN + DARK TURNS</span>
-              <span>● REAL WHATSAPP & IG LINK THUMBNAIL</span>
-              <span className="text-white">● ZERO REPEATS</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Header */}
-      <header className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-5 pb-3 flex items-center justify-between gap-3">
+    <div className="min-h-screen w-full halftone-bg text-[#0B0B0B]">
+      {/* Simple Top Bar */}
+      <header className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="brutal-box-sm bg-[#FF2E2E] text-white px-3 py-1 font-display text-2xl sm:text-3xl tracking-wider leading-none -rotate-2">
-            DISPATCH
+          <div className="brutal-box-sm bg-[#FF2E2E] text-white px-3 py-1 font-display text-2xl sm:text-3xl tracking-wider leading-none -rotate-1">
+            CAUGHT 4K
           </div>
-          <div className="hidden sm:block font-mono text-[11px] font-bold uppercase text-neutral-600 leading-tight">
-            <div>BAIT LINK MACHINE</div>
-            <div className="text-[#0B0B0B]">GROUP CHAT EDITION</div>
-          </div>
+          <p className="hidden sm:block text-sm font-semibold text-neutral-600">
+            Make a fake link. Catch your friend.
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
           {initialChain > 1 && (
-            <div className="brutal-box-sm bg-[#FFE600] px-3 py-1.5 font-mono text-xs font-bold uppercase flex items-center gap-1.5">
+            <div className="brutal-box-sm bg-[#FFE600] px-3 py-1.5 font-mono text-xs font-bold flex items-center gap-1.5">
               <Flame className="w-3.5 h-3.5 text-[#FF2E2E]" />
-              CHAIN #{initialChain}
+              Streak #{initialChain}
             </div>
           )}
           <button
             type="button"
             onClick={toggleMute}
             className="brutal-box-sm brutal-press bg-white p-2 cursor-pointer"
-            title={muted ? "Unmute Sound FX" : "Mute Sound FX"}
+            aria-label={muted ? "Unmute sound" : "Mute sound"}
           >
             {muted ? (
               <VolumeX className="w-4 h-4 text-[#FF2E2E]" />
@@ -322,144 +219,90 @@ export default function CreatorStudio({
         </div>
       </header>
 
-      {/* Main 2-Column Studio */}
-      <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 pb-16 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: BUILDER CONTROLS */}
+      {/* Main Clean 2-Column Workspace */}
+      <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 pb-16 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT: 2 SIMPLE CARDS */}
         <section className="lg:col-span-7 space-y-5">
-          {/* Step 1: Victim & Sender */}
-          <div className="brutal-box-lg bg-white p-5 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="bg-[#0B0B0B] text-[#FFE600] font-mono text-[11px] font-bold px-2.5 py-0.5 uppercase">
-                01 // TARGET
-              </span>
-              <span className="font-mono text-[11px] font-bold text-neutral-500 uppercase">
-                WHO'S GETTING COOKED?
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {/* Card 1: Name + Disguise */}
+          <div className="brutal-box bg-white p-5 sm:p-6 space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block font-mono text-[11px] font-bold uppercase mb-1.5">
-                  FRIEND'S NAME *
+                <label className="block text-xs font-bold uppercase tracking-wide text-neutral-600 mb-1.5">
+                  Friend's Name
                 </label>
                 <input
                   type="text"
                   value={victimName}
                   onChange={(e) => setVictimName(e.target.value)}
-                  placeholder="Type name (e.g. Rohan)"
+                  placeholder="Rohan, Priya, Kabir..."
                   maxLength={28}
-                  className="w-full brutal-box-sm bg-[#FAF7F0] px-4 py-3 font-sans font-extrabold text-lg text-[#0B0B0B] placeholder:text-neutral-400 focus:outline-none focus:bg-[#FFF8C5]"
+                  className="w-full brutal-box-sm bg-[#FAF7F0] px-4 py-3 font-sans font-bold text-lg text-[#0B0B0B] placeholder:text-neutral-400 focus:outline-none focus:bg-[#FFF9D6]"
                 />
               </div>
+
               <div>
-                <label className="block font-mono text-[11px] font-bold uppercase mb-1.5">
-                  YOUR NAME (OPTIONAL)
+                <label className="block text-xs font-bold uppercase tracking-wide text-neutral-600 mb-1.5">
+                  Your Name <span className="font-normal text-neutral-400">(optional)</span>
                 </label>
                 <input
                   type="text"
                   value={senderName}
                   onChange={(e) => setSenderName(e.target.value)}
-                  placeholder="Blank = Anonymous"
+                  placeholder="Leave blank to stay anonymous"
                   maxLength={24}
-                  className="w-full brutal-box-sm bg-[#FAF7F0] px-4 py-3 font-sans font-bold text-lg text-[#0B0B0B] placeholder:text-neutral-400 focus:outline-none focus:bg-[#FFF8C5]"
+                  className="w-full brutal-box-sm bg-[#FAF7F0] px-4 py-3 font-sans font-medium text-base text-[#0B0B0B] placeholder:text-neutral-400 focus:outline-none focus:bg-[#FFF9D6]"
                 />
               </div>
             </div>
 
-            {/* Quick Tap Names */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-              <span className="font-mono text-[10px] font-bold uppercase text-neutral-500 mr-1">
-                QUICK:
-              </span>
-              {QUICK_NAMES.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => {
-                    soundFX.playClick();
-                    setVictimName(n);
-                  }}
-                  className="border-2 border-[#0B0B0B] bg-[#FAF7F0] hover:bg-[#FFE600] px-2.5 py-0.5 font-mono text-[11px] font-bold cursor-pointer transition-colors"
-                >
-                  {n}
-                </button>
-              ))}
+            {/* Disguise Picker */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-neutral-600 mb-2">
+                Link Style
+              </label>
+              <div className="grid grid-cols-3 gap-2.5">
+                {(
+                  [
+                    { id: "news", label: "News Article", icon: Newspaper },
+                    { id: "leak", label: "Leaked Clip", icon: Lock },
+                    { id: "gift", label: "Secret Note", icon: Gift },
+                  ] as const
+                ).map((item) => {
+                  const Icon = item.icon;
+                  const active = mode === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        soundFX.playClick();
+                        setMode(item.id);
+                        rollFresh(item.id, lang, spice);
+                      }}
+                      className={`brutal-box-sm brutal-press py-3 px-2.5 flex flex-col sm:flex-row items-center justify-center gap-2 font-sans font-bold text-xs sm:text-sm cursor-pointer transition-colors ${
+                        active
+                          ? "bg-[#0B0B0B] text-[#FFE600]"
+                          : "bg-[#FAF7F0] text-[#0B0B0B] hover:bg-[#FFF5B8]"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Step 2: Disguise + Language + Dark Switch */}
-          <div className="brutal-box-lg bg-white p-5 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="bg-[#0B0B0B] text-[#FFE600] font-mono text-[11px] font-bold px-2.5 py-0.5 uppercase">
-                02 // DISGUISE & VIBE
-              </span>
-              <span className="font-mono text-[11px] font-bold text-neutral-500 uppercase">
-                CHANGES LINK PREVIEW TOO
-              </span>
-            </div>
-
-            {/* Disguise Modes */}
-            <div className="grid grid-cols-3 gap-2.5">
-              {(
-                [
-                  {
-                    id: "news",
-                    label: "BREAKING NEWS",
-                    sub: "/news/...",
-                    icon: Newspaper,
-                    activeBg: "bg-[#FF2E2E] text-white",
-                  },
-                  {
-                    id: "gift",
-                    label: "MYSTERY GIFT",
-                    sub: "/gift/...",
-                    icon: Gift,
-                    activeBg: "bg-[#FFE600] text-[#0B0B0B]",
-                  },
-                  {
-                    id: "leak",
-                    label: "CCTV / LEAK",
-                    sub: "/leak/...",
-                    icon: Lock,
-                    activeBg: "bg-[#0B0B0B] text-[#FFE600]",
-                  },
-                ] as const
-              ).map((m) => {
-                const Icon = m.icon;
-                const active = mode === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => {
-                      soundFX.playClick();
-                      setMode(m.id);
-                      rollFreshHeadline(m.id, lang, spice);
-                    }}
-                    className={`brutal-box-sm brutal-press p-3 text-left cursor-pointer transition-colors ${
-                      active ? m.activeBg : "bg-[#FAF7F0] hover:bg-neutral-100"
-                    }`}
-                  >
-                    <Icon className="w-5 h-5 mb-1.5" />
-                    <div className="font-display text-base sm:text-lg tracking-wide leading-none">
-                      {m.label}
-                    </div>
-                    <div className="font-mono text-[10px] opacity-75 mt-1">
-                      {m.sub}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Language + Dark Turn Row */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t-2 border-dashed border-neutral-300">
-              <div className="flex flex-wrap gap-1.5">
+          {/* Card 2: Headline + Shuffle */}
+          <div className="brutal-box bg-white p-5 sm:p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
                 {(
                   [
-                    { id: "mix", label: "MIX (HI + EN)" },
-                    { id: "hi", label: "HINGLISH" },
-                    { id: "en", label: "ENGLISH" },
+                    { id: "mix", label: "Mix" },
+                    { id: "hi", label: "Hinglish" },
+                    { id: "en", label: "English" },
                   ] as const
                 ).map((l) => (
                   <button
@@ -468,11 +311,11 @@ export default function CreatorStudio({
                     onClick={() => {
                       soundFX.playClick();
                       setLang(l.id);
-                      rollFreshHeadline(mode, l.id, spice);
+                      rollFresh(mode, l.id, spice);
                     }}
-                    className={`border-2 border-[#0B0B0B] px-3 py-1.5 font-mono text-xs font-bold cursor-pointer transition-colors ${
+                    className={`border-2 border-[#0B0B0B] px-3 py-1 text-xs font-bold cursor-pointer transition-colors ${
                       lang === l.id
-                        ? "bg-[#0B0B0B] text-[#FFE600]"
+                        ? "bg-[#0B0B0B] text-white"
                         : "bg-white text-[#0B0B0B] hover:bg-neutral-100"
                     }`}
                   >
@@ -484,147 +327,68 @@ export default function CreatorStudio({
               <button
                 type="button"
                 onClick={() => {
-                  const nextSpice: SpiceMode =
-                    spice === "dark" ? "chaotic" : "dark";
+                  const nextSpice: SpiceMode = spice === "dark" ? "chaotic" : "dark";
                   soundFX.playDiceTick();
                   setSpice(nextSpice);
-                  rollFreshHeadline(mode, lang, nextSpice);
+                  rollFresh(mode, lang, nextSpice);
                 }}
-                className={`brutal-box-sm brutal-press px-3.5 py-1.5 font-mono text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer transition-colors ${
+                className={`border-2 border-[#0B0B0B] px-3 py-1 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
                   spice === "dark"
                     ? "bg-[#FF2E2E] text-white"
-                    : "bg-[#FAF7F0] text-[#0B0B0B] hover:bg-[#0B0B0B] hover:text-white"
+                    : "bg-[#FAF7F0] text-[#0B0B0B] hover:bg-neutral-200"
                 }`}
               >
-                <Skull className="w-4 h-4" />
-                {spice === "dark" ? "DARK TURN: ON" : "DARK TURN: OFF"}
-              </button>
-            </div>
-          </div>
-
-          {/* Step 3: Infinite Headline Roller + Custom Edit */}
-          <div className="brutal-box-lg bg-white p-5 sm:p-6 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="bg-[#0B0B0B] text-[#FFE600] font-mono text-[11px] font-bold px-2.5 py-0.5 uppercase">
-                03 // HEADLINE BAIT
-              </span>
-
-              <button
-                type="button"
-                onClick={() => {
-                  soundFX.playDiceTick();
-                  rollFreshHeadline();
-                }}
-                className="brutal-box-sm brutal-press bg-[#FFE600] hover:bg-[#FF2E2E] hover:text-white px-4 py-2 font-display text-lg tracking-wider uppercase flex items-center gap-2 cursor-pointer transition-colors"
-              >
-                <Dices className="w-5 h-5" />
-                ROLL FRESH BAIT
+                <Skull className="w-3.5 h-3.5" />
+                {spice === "dark" ? "Brutal: ON" : "Brutal Mode"}
               </button>
             </div>
 
             <AnimatePresence mode="wait">
               <motion.div
                 key={rollCount}
-                initial={{ opacity: 0.6, y: -4 }}
+                initial={{ opacity: 0.65, y: -3 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.16 }}
+                transition={{ duration: 0.14 }}
               >
                 <textarea
                   rows={3}
                   value={resolvedHeadline}
                   onChange={(e) => setHeadlineDraft(e.target.value)}
-                  placeholder="Write your own crazy headline or hit Roll Fresh Bait..."
-                  className="w-full brutal-box-sm bg-[#FAF7F0] p-3.5 font-serif font-bold text-lg sm:text-xl leading-snug text-[#0B0B0B] focus:outline-none focus:bg-[#FFF9D6] resize-none"
+                  placeholder="Edit headline or hit Shuffle..."
+                  className="w-full brutal-box-sm bg-[#FAF7F0] p-4 font-serif font-bold text-lg sm:text-xl leading-snug text-[#0B0B0B] focus:outline-none focus:bg-[#FFF9D6] resize-none"
                 />
               </motion.div>
             </AnimatePresence>
 
-            {/* Quick Category Presets */}
-            <div className="space-y-2.5 pt-1">
-              <div className="flex flex-wrap gap-1.5">
-                {(
-                  [
-                    { id: "hinglish", label: "HINGLISH" },
-                    { id: "dark", label: "DARK" },
-                    { id: "exposed", label: "EXPOSED" },
-                    { id: "unhinged", label: "UNHINGED" },
-                    { id: "gift", label: "GIFT" },
-                  ] as const
-                ).map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => {
-                      soundFX.playClick();
-                      setActiveCategory(cat.id);
-                    }}
-                    className={`border-2 border-[#0B0B0B] px-2.5 py-1 font-mono text-[10px] font-bold uppercase cursor-pointer ${
-                      activeCategory === cat.id
-                        ? "bg-[#0B0B0B] text-white"
-                        : "bg-[#FAF7F0] text-[#0B0B0B] hover:bg-[#FFE600]"
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-1 gap-2">
-                {filteredPresets.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => {
-                      soundFX.playClick();
-                      setHeadlineDraft(preset.template);
-                      setSubheadDraft(preset.subhead);
-                      setTagDraft(preset.tag);
-                      setMode(preset.mode);
-                      setSpice(preset.dark ? "dark" : "chaotic");
-                      setSeed(Math.floor(Math.random() * 999999));
-                      setCopied(false);
-                    }}
-                    className="w-full text-left border-2 border-[#0B0B0B] bg-[#FAF7F0] hover:bg-[#FFE600] p-2.5 transition-colors cursor-pointer flex items-start justify-between gap-2"
-                  >
-                    <span className="font-sans font-bold text-xs sm:text-sm leading-snug">
-                      {preset.template.replaceAll("{name}", displayVictim)}
-                    </span>
-                    <span className="font-mono text-[9px] font-bold uppercase bg-[#0B0B0B] text-white px-1.5 py-0.5 flex-shrink-0">
-                      {preset.tag}
-                    </span>
-                  </button>
-                ))}
-              </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-neutral-500 font-medium">
+                Tap inside to write your own, or shuffle a fresh one.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  soundFX.playDiceTick();
+                  rollFresh();
+                }}
+                className="brutal-box-sm brutal-press bg-[#FFE600] hover:bg-[#FF2E2E] hover:text-white px-4 py-2 font-sans font-extrabold text-sm flex items-center gap-2 cursor-pointer transition-colors flex-shrink-0"
+              >
+                <Dices className="w-4 h-4" />
+                Shuffle
+              </button>
             </div>
           </div>
         </section>
 
-        {/* RIGHT COLUMN: LIVE WHATSAPP PREVIEW + DROP CONTROLS */}
+        {/* RIGHT: LIVE PREVIEW + SEND BUTTONS */}
         <aside className="lg:col-span-5 lg:sticky lg:top-6 space-y-5">
-          {/* Live Chat Preview Box */}
-          <div className="brutal-box-lg bg-[#0B141A] text-white p-4 sm:p-5 space-y-3">
-            <div className="flex items-center justify-between border-b border-white/15 pb-2.5">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-[#00C853] text-[#0B0B0B] font-mono text-xs font-extrabold flex items-center justify-center">
-                  GC
-                </div>
-                <div>
-                  <div className="font-sans font-bold text-xs leading-none">
-                    Group Chat Preview
-                  </div>
-                  <div className="font-mono text-[10px] text-[#00E676] mt-0.5">
-                    live link card • updates as you type
-                  </div>
-                </div>
-              </div>
-              <span className="font-mono text-[10px] bg-white/10 px-2 py-0.5 uppercase">
-                {mode}
-              </span>
+          {/* WhatsApp / DM Link Preview */}
+          <div className="brutal-box bg-[#0B141A] text-white p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs text-neutral-400 px-1">
+              <span className="font-semibold text-white">How it looks in chat</span>
+              <span className="font-mono text-[11px] text-[#00E676]">Live preview</span>
             </div>
 
-            {/* Simulated Sent WhatsApp Message Bubble */}
-            <div className="ml-auto max-w-[95%] bg-[#005C4B] rounded-lg rounded-tr-none p-2 space-y-2 shadow-lg">
-              {/* Embedded OG Thumbnail Card */}
+            <div className="bg-[#005C4B] rounded-lg p-2 space-y-2">
               <div
                 className={`rounded overflow-hidden border-2 ${
                   previewDark
@@ -634,37 +398,34 @@ export default function CreatorStudio({
                     : "bg-[#FAF7F0] text-[#0B0B0B] border-[#0B0B0B]"
                 }`}
               >
-                <div className="p-3 space-y-2">
+                <div className="p-3.5 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span
-                      className={`font-mono text-[9px] font-extrabold px-1.5 py-0.5 uppercase ${
+                      className={`font-mono text-[10px] font-bold px-2 py-0.5 uppercase ${
                         previewGift
                           ? "bg-[#0B0B0B] text-[#FFE600]"
                           : "bg-[#FF2E2E] text-white"
                       }`}
                     >
-                      {tagDraft || "BREAKING"}
+                      {tagDraft}
                     </span>
                     <span
-                      className={`font-mono text-[9px] font-bold ${
+                      className={`font-mono text-[10px] font-bold ${
                         previewDark ? "text-[#FFE600]" : "text-[#FF2E2E]"
                       }`}
                     >
-                      {previewGift ? `FOR: ${displayVictim.toUpperCase()}` : "● LIVE"}
+                      {previewGift ? `FOR ${displayVictim.toUpperCase()}` : "● LIVE"}
                     </span>
                   </div>
 
-                  <div className="font-serif font-extrabold text-base leading-tight">
+                  <div className="font-serif font-extrabold text-base leading-snug">
                     {resolvedHeadline}
                   </div>
-
-                  <div className="font-sans text-[11px] opacity-75 line-clamp-2">
-                    {subheadDraft}
-                  </div>
+                  <p className="text-xs opacity-75 line-clamp-2">{subheadDraft}</p>
                 </div>
 
                 <div
-                  className={`px-3 py-1.5 font-mono text-[10px] flex items-center justify-between ${
+                  className={`px-3.5 py-1.5 font-mono text-[10px] flex items-center justify-between ${
                     previewDark
                       ? "bg-[#1A1A1A] text-neutral-300"
                       : "bg-black/10 text-[#0B0B0B]"
@@ -677,131 +438,53 @@ export default function CreatorStudio({
                 </div>
               </div>
 
-              {/* Caption Text + Fake URL */}
-              <div className="px-1.5 pb-1 space-y-1">
-                <p className="font-sans text-xs text-white leading-snug">
-                  {activeCaption}
-                </p>
-                <p className="font-mono text-[10px] text-[#53BDEB] break-all line-clamp-1 underline">
-                  {fullUrl}
-                </p>
-                <div className="text-right font-mono text-[9px] text-white/60">
+              <div className="px-1.5 pb-0.5">
+                <p className="text-xs text-white leading-snug">{activeCaption}</p>
+                <div className="text-right font-mono text-[10px] text-white/60 mt-1">
                   now ✓✓
                 </div>
               </div>
             </div>
-
-            {/* Swap Chat Caption */}
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <span className="font-mono text-[10px] text-white/60 uppercase">
-                BAIT TEXT ABOVE LINK:
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  soundFX.playClick();
-                  setCaptionIndex((i) => i + 1);
-                }}
-                className="font-mono text-[10px] font-bold uppercase text-[#FFE600] hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <Sparkles className="w-3 h-3" /> SWAP CAPTION
-              </button>
-            </div>
           </div>
 
-          {/* Launchpad Buttons */}
-          <div className="brutal-box-lg bg-[#FFE600] p-5 space-y-3">
+          {/* Primary Actions */}
+          <div className="brutal-box bg-[#FFE600] p-4 sm:p-5 space-y-3">
             <button
               type="button"
-              onClick={handleWhatsappDrop}
-              className="w-full brutal-box brutal-press animate-pulse-cta bg-[#00C853] text-[#0B0B0B] py-4 px-5 font-display text-2xl sm:text-3xl tracking-wider uppercase flex items-center justify-center gap-2.5 cursor-pointer"
+              onClick={handleWhatsapp}
+              className="w-full brutal-box brutal-press bg-[#00C853] text-[#0B0B0B] py-3.5 px-4 font-display text-2xl tracking-wider uppercase flex items-center justify-center gap-2 cursor-pointer"
             >
               <MessageCircle className="w-6 h-6" />
-              DROP IN WHATSAPP
+              Send on WhatsApp
             </button>
 
             <button
               type="button"
-              onClick={() => handleCopyLink()}
-              className="w-full brutal-box brutal-press bg-[#0B0B0B] text-[#FFE600] py-3.5 px-5 font-display text-2xl tracking-wider uppercase flex items-center justify-center gap-2.5 cursor-pointer"
+              onClick={handleCopy}
+              className="w-full brutal-box brutal-press bg-[#0B0B0B] text-[#FFE600] py-3.5 px-4 font-display text-2xl tracking-wider uppercase flex items-center justify-center gap-2 cursor-pointer"
             >
               {copied ? (
                 <>
-                  <Check className="w-6 h-6 text-[#00FF66]" /> COPIED! PASTE IN CHAT
+                  <Check className="w-5 h-5 text-[#00FF66]" /> Link Copied!
                 </>
               ) : (
                 <>
-                  <Copy className="w-5 h-5" /> COPY BAIT LINK
+                  <Copy className="w-5 h-5" /> Copy Bait Link
                 </>
               )}
             </button>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={handleNativeShare}
-                className="brutal-box-sm brutal-press bg-white text-[#0B0B0B] py-2.5 px-3 font-mono text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Share2 className="w-3.5 h-3.5" /> SHARE MORE
-              </button>
-
-              <a
-                href={baitPath}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => {
-                  soundFX.playClick();
-                  saveTrapToHistory();
-                }}
-                className="brutal-box-sm brutal-press bg-white text-[#0B0B0B] py-2.5 px-3 font-mono text-xs font-bold uppercase flex items-center justify-center gap-1.5"
-              >
-                <ExternalLink className="w-3.5 h-3.5" /> TEST TRAP
-              </a>
-            </div>
+            <a
+              href={baitPath}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => soundFX.playClick()}
+              className="w-full py-2 text-center font-sans text-xs font-bold underline underline-offset-4 text-[#0B0B0B] hover:text-[#FF2E2E] flex items-center justify-center gap-1.5"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Preview what they'll see
+            </a>
           </div>
-
-          {/* Recent Links Built on This Device */}
-          {recentTraps.length > 0 && (
-            <div className="brutal-box bg-white p-4 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] font-bold uppercase flex items-center gap-1.5">
-                  <History className="w-3.5 h-3.5" /> RECENT BAITS ({recentTraps.length})
-                </span>
-                <button
-                  type="button"
-                  onClick={handleClearHistory}
-                  className="font-mono text-[10px] font-bold uppercase text-neutral-500 hover:text-[#FF2E2E] flex items-center gap-1 cursor-pointer"
-                >
-                  <Trash2 className="w-3 h-3" /> CLEAR
-                </button>
-              </div>
-              <div className="space-y-1.5">
-                {recentTraps.map((trap) => (
-                  <div
-                    key={trap.id}
-                    className="border-2 border-[#0B0B0B] bg-[#FAF7F0] p-2 flex items-center justify-between gap-2"
-                  >
-                    <div className="min-w-0">
-                      <div className="font-mono text-[10px] font-bold uppercase text-[#FF2E2E]">
-                        {trap.victim} • {trap.mode}
-                      </div>
-                      <div className="font-sans text-xs font-bold truncate">
-                        {trap.headline}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyLink(trap.url)}
-                      className="border-2 border-[#0B0B0B] bg-[#FFE600] hover:bg-[#0B0B0B] hover:text-white p-1.5 cursor-pointer flex-shrink-0"
-                      title="Copy Link"
-                    >
-                      <Zap className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </aside>
       </main>
     </div>
